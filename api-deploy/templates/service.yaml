@@ -1,20 +1,21 @@
-kind: Service
 apiVersion: v1
+kind: Service
 metadata:
-  name: api-service
+  name: {{ .Release.Name }}-service
   labels:
     app.kubernetes.io/name: node-express-api
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/version: {{ .Values.image.tag }}
     app.kubernetes.io/component: node-express-api
     app.kubernetes.io/part-of: node-express-api
-    app.kubernetes.io/managed-by: helm2
+    app.kubernetes.io/managed-by: helm
 spec:
+  type: ClusterIP   # Change to NodePort if you are NOT using Ingress
   selector:
     app.kubernetes.io/name: node-express-api
     app.kubernetes.io/instance: {{ .Release.Name }}
   ports:
-  - protocol: TCP
-    port: 80
-    targetPort: 3000
-  type: NodePort
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 3000
