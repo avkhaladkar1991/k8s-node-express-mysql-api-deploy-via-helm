@@ -11,7 +11,7 @@ pipeline{
 
         stage('Checkout') {
             steps {
-                git branch: 'main', credentialsId: "${GIT_CRED_ID}", url: 'https://github.com/avkhaladkar1991/k8s-node-express-mysql-api-deploy-via-helm.git'
+                git branch: 'master', url: 'https://github.com/avkhaladkar1991/k8s-node-express-mysql-api-deploy-via-helm.git', credentialsId: 'github-creds'
             }
         }
 
