@@ -1,24 +1,28 @@
-pipeline{
+pipeline {
     agent any
+
     environment {
+        PATH = "/usr/local/bin:/opt/homebrew/bin:$PATH"   // Ensure Jenkins finds Docker & Helm
         IMAGE_NAME = "my-node-app"
         IMAGE_TAG  = "v1"
         CHART_PATH = "helm/mychart"
-        GIT_CRED_ID = "github-creds"                 // change to your Jenkins credential id (or remove)
-      
+        GIT_CRED_ID = "github-creds"
     }
+
     stages {
 
         stage('Checkout') {
             steps {
-                git branch: 'master', url: 'https://github.com/avkhaladkar1991/k8s-node-express-mysql-api-deploy-via-helm.git', credentialsId: 'github-creds'
+                git branch: 'master', 
+                    url: 'https://github.com/avkhaladkar1991/k8s-node-express-mysql-api-deploy-via-helm.git', 
+                    credentialsId: "${GIT_CRED_ID}"
             }
         }
 
         stage('Build Docker Image') {
             steps {
                 sh 'docker version'
-                sh 'docker build -t my-node-app:v1 .'
+                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
             }
         }
 
@@ -33,11 +37,14 @@ pipeline{
                 }
             }
         }
+
         stage('Deploy to Kubernetes using Helm') {
             steps {
                 withCredentials([kubeconfigFile(credentialsId: 'kubeconfig-creds', variable: 'KUBECONFIG')]) {
                     sh '''
-                        helm upgrade --install $ IMAGE_NAME $CHART_PATH --set image.repository=$DOCKERHUB_USERNAME/$IMAGE_NAME --set image.tag=$IMAGE_TAG
+                        helm upgrade --install $IMAGE_NAME $CHART_PATH \
+                        --set image.repository=$DOCKERHUB_USERNAME/$IMAGE_NAME \
+                        --set image.tag=$IMAGE_TAG
                     '''
                 }
             }
