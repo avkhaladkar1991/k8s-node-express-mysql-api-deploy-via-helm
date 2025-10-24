@@ -1,53 +1,53 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: api-deployment
+  name: {{ include "api-deploy.fullname" . }}
   labels:
-    app.kubernetes.io/name: node-express-api
+    app.kubernetes.io/name: {{ include "api-deploy.name" . }}
+    helm.sh/chart: {{ include "api-deploy.chart" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}
-    app.kubernetes.io/version: {{ .Values.image.tag }}
-    app.kubernetes.io/component: node-express-api
-    app.kubernetes.io/part-of: node-express-api
-    app.kubernetes.io/managed-by: helm2
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app.kubernetes.io/name: node-express-api
+      app.kubernetes.io/name: {{ include "api-deploy.name" . }}
       app.kubernetes.io/instance: {{ .Release.Name }}
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: node-express-api
+        app.kubernetes.io/name: {{ include "api-deploy.name" . }}
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
       containers:
-      - name: node-express-api
-        image: dockerbogo/node-express-api:{{ .Values.image.tag }}
-        ports:
-        - containerPort: 3000
-          name: http
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 3000
-          initialDelaySeconds: 1
-          periodSeconds: 1
-        livenessProbe:
-          httpGet:
-            path: /
-            port: 3000
-          initialDelaySeconds: 1
-          periodSeconds: 5
-        env:
-        - name: DB_HOST
-          value: {{ .Release.Name }}-mysql
-        - name: DB_USER
-          value: mysql-user
-        - name: DB_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: api-db-pass
-              key: mysql-password
-        - name: DB_DATABASE
-          value: api_db
+        - name: node-express-api
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 3000
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          env:
+            - name: DB_HOST
+              value: {{ .Release.Name }}-mysql
+            - name: DB_USER
+              value: {{ .Values.mysql.auth.username }}
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.mysql.auth.existingSecret }}
+                  key: mysql-password
+            - name: DB_DATABASE
+              value: {{ .Values.mysql.auth.database }}
