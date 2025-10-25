@@ -1,58 +1,55 @@
 pipeline {
     agent any
+
     environment {
-        IMAGE_NAME = "my-node-app"
-        IMAGE_TAG  = "v1"
-        CHART_PATH = "helm/mychart"
+        // Add brew path so helm and other tools are found
+        PATH = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
     }
 
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'master',
-                    url: 'https://github.com/avkhaladkar1991/k8s-node-express-mysql-api-deploy-via-helm.git',
-                    credentialsId: 'github-creds'
+                git branch: 'master', url: 'https://github.com/avkhaladkar1991/k8s-node-express-mysql-api-deploy-via-helm.git'
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                sh 'echo Installing dependencies...'
+                // Use npm since yarn was not available in PATH earlier
+                sh 'npm install'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker version'
-                sh 'docker build -t $IMAGE_NAME:$IMAGE_TAG .'
+                sh 'echo Building Docker image...'
+                sh 'docker build -t my-node-app:latest .'
             }
         }
 
-        stage('Push Docker Image to Registry') {
+        stage('Deploy with Helm') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds',
-                    usernameVariable: 'DOCKERHUB_USERNAME',
-                    passwordVariable: 'DOCKERHUB_PASSWORD')]) {
-                    sh '''
-                        echo $DOCKERHUB_PASSWORD | docker login -u $DOCKERHUB_USERNAME --password-stdin
-                        docker tag $IMAGE_NAME:$IMAGE_TAG $DOCKERHUB_USERNAME/$IMAGE_NAME:$IMAGE_TAG
-                        docker push $DOCKERHUB_USERNAME/$IMAGE_NAME:$IMAGE_TAG
-                    '''
-                }
+                sh 'echo Deploying to Kubernetes using Helm...'
+                // Print Helm version to confirm it's visible
+                sh 'helm version'
+                // Upgrade or install Helm chart
+                sh 'helm upgrade --install my-node-app ./helm/mychart --namespace default --create-namespace'
             }
         }
 
-        stage('Deploy to Kubernetes using Helm') {
+        stage('Verify Deployment') {
             steps {
-                withCredentials([file(credentialsId: 'kubeconfig-creds', variable: 'KUBECONFIG')]) {
-                    sh '''
-                        echo "Using kubeconfig: $KUBECONFIG"
-                        helm upgrade --install $IMAGE_NAME $CHART_PATH \
-                            --set image.repository=$DOCKERHUB_USERNAME/$IMAGE_NAME \
-                            --set image.tag=$IMAGE_TAG
-                    '''
-                }
+                sh 'echo Checking deployed Helm releases...'
+                sh 'helm list --namespace default'
             }
         }
     }
 
     post {
         always {
-            sh 'helm list'
+            echo 'Cleaning up temporary workspace...'
+            cleanWs()
         }
     }
 }
